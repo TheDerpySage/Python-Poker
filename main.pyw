@@ -4,12 +4,10 @@ from PIL import ImageTk, Image
 from playsound import playsound
 from os.path import join
 from collections import Counter
+from io import BytesIO
 import pickle
 
-
-import poker
-
-# TODO: Add a menu bar and add a Save, Load, and Reset Buttons and a Help and About windows
+import poker, cards
 
 window = Tk()
 
@@ -57,6 +55,20 @@ lblResults = Label(window, text = "")
 lblResults.grid(row=2, column=1, columnspan=3)
 btnDeal = Button(window, text="Deal\n")
 btnDeal.grid(row=2, column=4, sticky=E)
+
+class RestrictedUnpickler(pickle.Unpickler):
+    def find_class(self, module, name):
+        # Only allow poker and card modules, nothing else
+        if module == "poker":
+            return getattr(poker, name)
+        elif module == "cards":
+            return getattr(cards, name)
+        # Forbid everything else.
+        raise pickle.UnpicklingError("global '%s.%s' is forbidden" %
+                                     (module, name))
+                                
+def pickle_restrictedLoads(s):
+    return RestrictedUnpickler(BytesIO(s.read())).load()
 
 def deal():
     if poker.state.STATE == 0 or poker.state.STATE == 2:
@@ -270,27 +282,30 @@ def resetGame():
     resetImages()
 
 def saveGame():
-    with open('save.pkl', 'wb') as fw:
+    with open('save.bin', 'wb') as fw:
         pickle.dump(poker.state, fw, pickle.HIGHEST_PROTOCOL)
         lblResults.config(text="Game Saved")
 
-def loadGame():
-    temp = poker.state
+def loadGame(): 
     try:
-        with open('save.pkl', 'rb') as fr:
-            poker.state = pickle.load(fr)
-            if poker.state.STATE != 0:
-                poker.state.STATE = 0
-            if poker.state.BET > 0:
-                poker.state.CREDITS += poker.state.BET
-                poker.state.BET = 0
-            resetImages()
-            updateHUD()
-            lblResults.config(text="Game Loaded")
-    except: 
+        temp = poker.state
+        del poker.state
+        with open('save.bin', 'rb') as fr:
+            #poker.state = pickle.loads(fr)
+            poker.state = pickle_restrictedLoads(fr)
+        if poker.state.STATE != 0:
+            poker.state.STATE = 0
+        if poker.state.BET > 0:
+            poker.state.CREDITS += poker.state.BET
+            poker.state.BET = 0
+        resetImages()
+        updateHUD()
+        lblResults.config(text="Game Loaded")
+    except Exception as e: 
         poker.state = temp
-        lblResults.config(text="Load Failed")
-    del temp
+        lblResults.config(text="Load Failed: %s" % e)
+    finally:
+        del temp
 
 def about():
     showinfo("About Python Video Poker", "\
@@ -332,7 +347,7 @@ def end():
         window.destroy()
     elif res == False:
         window.destroy()
-        
+
 def main(): 
     # BIND FUNCTIONS
     panel1.bind("<Button-1>",lambda e,x=1:hold(x))
