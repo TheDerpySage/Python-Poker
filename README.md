@@ -15,6 +15,6 @@ pip install -r requirements.txt
 
 ## Credits
 
-Programmed by TheDerpySage, 2023.
-Card Sprites by [Kenney](https://www.kenney.nl/), 2015.
+Programmed by TheDerpySage, 2023.  
+Card Sprites by [Kenney](https://www.kenney.nl/), 2015.  
 SFX from Super Mario World. Super Nintendo version, Nintendo, 1990.
